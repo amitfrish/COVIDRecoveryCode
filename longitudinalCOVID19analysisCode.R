@@ -1,4 +1,5 @@
-folder = "C:/Users/Shennor/Dropbox (Irit Gat Viks)/phD_documents/Postdoc/Joachim/COVIDLongitudinal/uploadedCode/FileFolder"
+folder = "<<Code location>>"
+folder = file.path(folder,"FileFolder")
 library(ggplot2)
 library(sva)
 library(TimeAx)

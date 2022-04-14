@@ -55,7 +55,7 @@ GEDataCombat = ComBat(logCPM, batchInformation)
 
 #### Create meta data ####
 
-# This file cannot be uploaded from privacy (GDPR) issues. Please contact Joachim.Schultze@dzne.de to request access for the data #
+# This file cannot be uploaded due to privacy (GDPR) issues. Please contact Joachim.Schultze@dzne.de to request access for the data #
 AnnotationsBase = read.table(file.path(folder, "new_anno_table_raw.csv"),sep=",",header = T, row.names = 1, check.names = F)
 
 AnnotationsBase = AnnotationsBase[unique(sampleNames),]

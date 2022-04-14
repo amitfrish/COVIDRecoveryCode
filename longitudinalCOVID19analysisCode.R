@@ -54,7 +54,10 @@ logCPM <- edgeR::cpm(y, log=F, prior.count=0.1) # Convert to CPM and log2 transf
 GEDataCombat = ComBat(logCPM, batchInformation)
 
 #### Create meta data ####
+
+# This file cannot be uploaded from privacy (GDPR) issues. Please contact Joachim.Schultze@dzne.de to request access for the data #
 AnnotationsBase = read.table(file.path(folder, "new_anno_table_raw.csv"),sep=",",header = T, row.names = 1, check.names = F)
+
 AnnotationsBase = AnnotationsBase[unique(sampleNames),]
 inclusionDates = as.numeric(as.Date(AnnotationsBase$Date_inclusion, format = "%m/%d/%Y", origin = "2020-03-20"))
 sampleMeta = lapply(1:length(unique(sampleNames)), function(i){

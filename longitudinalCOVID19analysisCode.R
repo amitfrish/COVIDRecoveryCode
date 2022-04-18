@@ -1,4 +1,5 @@
-folder = "<<Code location>>"
+#folder = "<<Code location>>"
+folder = "C:/Users/Shennor/Dropbox (Irit Gat Viks)/phD_documents/Postdoc/Joachim/COVIDLongitudinal/uploadedCode"
 folder = file.path(folder,"FileFolder")
 library(ggplot2)
 library(sva)
@@ -47,49 +48,12 @@ trajectoryBase = as.numeric(sapply(colnames(GEData),function(x){unlist(strsplit(
 sampleNames = sapply(colnames(GEData),function(x){unlist(strsplit(x,"_"))[1]})
 batchInformation = sampleDict$Batch_num
 dateNumbers <- as.numeric(as.Date(sampleDict$Sample_Name_02, format = "%m/%d/%Y", origin = "2020-03-20"))
+metaDataNum = readRDS(file.path(folder,"metaDataSmall.rds"))
 
 y <- edgeR::DGEList(counts=GEData) # Put counts into DGEList.
 y <- edgeR::calcNormFactors(y) # TMM-normalization.
 logCPM <- edgeR::cpm(y, log=F, prior.count=0.1) # Convert to CPM and log2 transformation.
 GEDataCombat = ComBat(logCPM, batchInformation)
-
-#### Create meta data ####
-
-# This file cannot be uploaded due to privacy (GDPR) issues. Please contact Joachim.Schultze@dzne.de to request access for the data #
-AnnotationsBase = read.table(file.path(folder, "new_anno_table_raw.csv"),sep=",",header = T, row.names = 1, check.names = F)
-
-AnnotationsBase = AnnotationsBase[unique(sampleNames),]
-inclusionDates = as.numeric(as.Date(AnnotationsBase$Date_inclusion, format = "%m/%d/%Y", origin = "2020-03-20"))
-sampleMeta = lapply(1:length(unique(sampleNames)), function(i){
-  currSampleName = unique(sampleNames)[i]
-  currSampleBaseTraj = dateNumbers[sampleNames == currSampleName]
-  currSampleBaseTraj = currSampleBaseTraj - inclusionDates[i]+1
-  do.call(rbind,lapply(currSampleBaseTraj, function(currDay){
-    dayString = paste("_day",currDay,"$",sep="")
-    currData = AnnotationsBase[currSampleName, grep(dayString, colnames(AnnotationsBase))]
-    colnames(currData) = gsub(dayString,"",colnames(currData))
-    currData
-  }))
-})
-sampleMetaTotal = do.call(rbind,sampleMeta)
-row.names(sampleMetaTotal) = colnames(GEData)
-metaSampleInfo = t(do.call(cbind,lapply(row.names(sampleMetaTotal),function(currName){unlist(strsplit(currName,"_"))})))
-colnames(metaSampleInfo) = c("SampleName","timePoint")
-
-AnnotationsToUseForSamples = AnnotationsBase[,grep("day",colnames(AnnotationsBase),invert = T)]
-AnnotationsToUseForSamplesToAdd = do.call(rbind,lapply(metaSampleInfo[,1],function(currSample){
-  AnnotationsToUseForSamples[currSample,]
-}))
-sampleMetaTotal = cbind(metaSampleInfo,AnnotationsToUseForSamplesToAdd,sampleMetaTotal)
-row.names(sampleMetaTotal) = colnames(GEData)
-
-metaDataNum = apply(sampleMetaTotal,2,function(x){
-  if(length(unique(x))<6){
-    as.numeric(as.factor(x))
-  }else{
-    as.numeric(x)
-  }
-})
 
 #### Create train and test ####
 chosenSampleNamesTrain = names(which(table(sampleNames)>4))
@@ -112,57 +76,8 @@ dateListAll = lapply(unique(sampleNames),function(currName){
 })
 
 #### Create original time scales ####
-daysUntilRelease = unlist(lapply(unique(sampleNamesAll),function(currInd){
-  currSamplingDates = unlist(dateListAll)[sampleNamesAll==currInd]
-  currAnnot = AnnotationsBase[currInd,]
-  testDaysNum = max(as.numeric(as.Date(currAnnot[1,"Date_time_disch_ICU"], origin = "2020-03-20" , format = "%m/%d/%Y")))
-  testDaysNum-currSamplingDates
-}))
-
-daysFromInclusion = unlist(lapply(unique(sampleNamesAll),function(currInd){
-  currSamplingDates = unlist(dateListAll)[sampleNamesAll==currInd]
-  currAnnot = AnnotationsBase[currInd,]
-  testDaysNum = max(as.numeric(as.Date(currAnnot[1,"Date_inclusion"], origin = "2020-03-20" , format = "%m/%d/%Y")))
-  currSamplingDates - testDaysNum + 1
-}))
-
-daysFromSymph = unlist(lapply(unique(sampleNamesAll),function(currInd){
-  currSamplingDates = unlist(dateListAll)[sampleNamesAll==currInd]
-  currAnnot = AnnotationsBase[currInd,]
-  testDaysNum = max(as.numeric(as.Date(currAnnot[1,"Date_COVID_signs"], origin = "2020-03-20" , format = "%m/%d/%Y")))
-  currSamplingDates - testDaysNum + 1
-}))
-
-daysOfSymph = unlist(lapply(unique(sampleNamesAll),function(currInd){
-  currAnnot = annotationBase[currInd,]
-  currSamplingDates = as.numeric(as.Date(currAnnot[1,"Date_COVID_signs"], origin = "2020-03-20" , format = "%m/%d/%Y"))[1]
-  testDaysNum = as.numeric(as.Date(currAnnot[1,"Date_inclusion"], origin = "2020-03-20" , format = "%m/%d/%Y"))
-  currSamplingDates - testDaysNum + 1
-}))
-
-# daysOfSecInff = unlist(lapply(unique(sampleNamesAll),function(currInd){
-#   currAnnot = annotationBase[currInd,]
-#   currSamplingDates = as.numeric(as.Date(currAnnot[1,"Secinf_date1"], origin = "2020-03-20" , format = "%m/%d/%Y"))[1]
-#   testDaysNum = as.numeric(as.Date(currAnnot[1,"Date_inclusion"], origin = "2020-03-20" , format = "%m/%d/%Y"))
-#   currSamplingDates - testDaysNum + 1
-# }))
-
-dayOfAdmission = daysFromSymph - daysFromInclusion + 1
-dayOfRelease = daysUntilRelease+daysFromSymph
-# dayOfSecInff = sapply(unique(sampleNamesAll),function(currInd){
-#   currAnnot = annotationBase[currInd,]
-#   currSamplingDates = as.numeric(as.Date(currAnnot[1,"Secinf_date1"], origin = "2020-03-20" , format = "%m/%d/%Y"))[1]
-#   currCOVIDStart = as.numeric(as.Date(currAnnot[1,"Date_COVID_signs"], origin = "2020-03-20" , format = "%m/%d/%Y"))[1]
-#   currSamplingDates - currCOVIDStart + 1
-# })
-# dayOfSecInffPerSample = dayOfSecInff[match(sampleNamesAll,names(dayOfSecInff))]
-
-timeInHosp = sapply(unique(sampleNamesAll), function(currSample){
-  (daysFromInclusion+daysUntilRelease)[sampleNamesAll == currSample][1]
-})
-timeFromSymphOverall = sapply(unique(sampleNamesAll), function(currSample){
-  (daysFromSymph+daysUntilRelease)[sampleNamesAll == currSample][1]
-})
+daysFromInclusion = metaDataNum[,"daysFromInclusion"]
+daysFromSymph = metaDataNum[,"daysFromSymph"]
 
 #### Alignment ####
 proteinCodingGenes = as.character(as.matrix(read.table(file.path(folder,"proteinCodingGenes.txt"),sep = "\t", row.names = NULL, col.names = F)))
@@ -285,8 +200,8 @@ geneDiff = sort(geneMatrixForComp[,1]-geneMatrixForComp[,2])
 geneMatrixForCompToShow = geneMatrixForComp[names(c(geneDiff[1:10],rev(geneDiff)[1:10])),]
 
 geneToPlot = "IL17RA"
-dataPlotter(alignedDataValues, trajToUseProfileToUse,geneToPlot,regLine = T)
-dataPlotter(alignedDataValues[daysFromSymph>0,], daysFromSymph[daysFromSymph>0],geneToPlot,regLine = T)
+dataPlotter(t(GEDataCombatAll), trajToUseProfileToUse,geneToPlot,regLine = T)
+dataPlotter(t(GEDataCombatAll)[daysFromSymph>0,], daysFromSymph[daysFromSymph>0],geneToPlot,regLine = T)
 
 #### Figure 3 ####
 caculateModelFitScore = function(sampleList, pseudo, pre){
@@ -321,10 +236,6 @@ AnnotationsToUseForSamplesFirst = do.call(rbind,lapply(unique(sampleNamesAll), f
   metaDataNum[sampleNamesAll==currSample,][1,]
 }))
 row.names(AnnotationsToUseForSamplesFirst) = unique(sampleNamesAll)
-above70Vector = rep(1,dim(AnnotationsToUseForSamplesFirst)[1])
-above70Vector[AnnotationsToUseForSamplesFirst[,"Age"]>=70] = 2
-AnnotationsToUseForSamplesFirst = cbind(AnnotationsToUseForSamplesFirst,above70Vector)
-colnames(AnnotationsToUseForSamplesFirst)[dim(AnnotationsToUseForSamplesFirst)[2]] = "Above70"
 
 getMetaGroupPlot = function(metaName){
   tableOfMetaPerGroup = table(stateVector,AnnotationsToUseForSamplesFirst[sampleOrderForGroups,metaName])
@@ -334,12 +245,7 @@ getMetaGroupPlot = function(metaName){
     theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 }
 
-deathGroupPlot = getMetaGroupPlot("Pat_deceased_in_hosp")
-maleGroupPlot = getMetaGroupPlot("Gender")
-above70GroupPlot = getMetaGroupPlot("Above70")
-medicalHistoryDiabetesGroupPlot = getMetaGroupPlot("Medical_history_Diabetes")
-medicalHistoryCardioGroupPlot = getMetaGroupPlot("Medical_history_Cardiovascular_insufficiency")
-medicalHistoryHypertensionGroupPlot = getMetaGroupPlot("Hypertension")
+deathGroupPlot = getMetaGroupPlot("Pat_deceased_in_hosp") # Provided only clinical outcome and not age and gender due to privacy (GDPR) issues.
 
 #Figure 3F
 diffIn2First = sapply(unique(sampleNamesAll),function(currSample){

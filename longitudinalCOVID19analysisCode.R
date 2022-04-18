@@ -57,8 +57,8 @@ GEDataCombat = ComBat(logCPM, batchInformation)
 
 #### Create train and test ####
 chosenSampleNamesTrain = names(which(table(sampleNames)>4))
-deathInChosen = sapply(chosenSampleNamesTrain, function(currName){max(sampleMetaTotal$Pat_deceased_in_hosp[sampleMetaTotal$SampleName==currName])})
-chosenSampleNamesTrain = chosenSampleNamesTrain[deathInChosen == 0]
+deathInChosen = sapply(chosenSampleNamesTrain, function(currName){max(metaDataNum[sampleNames==currName,"Pat_deceased_in_hosp"])})
+chosenSampleNamesTrain = chosenSampleNamesTrain[deathInChosen == 1]
 indexesForTrain = which((sampleNames %in% chosenSampleNamesTrain))
 sampleNamesTrain = sampleNames[indexesForTrain]
 GEDataCombatTrain = GEDataCombat[,indexesForTrain]
